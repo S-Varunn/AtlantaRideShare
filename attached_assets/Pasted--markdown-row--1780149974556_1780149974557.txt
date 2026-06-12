@@ -1,0 +1,102 @@
+| markdown_row                                                         |
+| -------------------------------------------------------------------- |
+| | admin_audit_logs | id | uuid | NO |                                |
+| | admin_audit_logs | admin_id | uuid | YES |                         |
+| | admin_audit_logs | action | text | NO |                            |
+| | admin_audit_logs | target_id | text | YES |                        |
+| | admin_audit_logs | details | jsonb | YES |                         |
+| | admin_audit_logs | created_at | timestamp with time zone | YES |   |
+| | driver_locations | id | uuid | NO |                                |
+| | driver_locations | driver_id | uuid | NO |                         |
+| | driver_locations | ride_id | uuid | YES |                          |
+| | driver_locations | latitude | double precision | NO |              |
+| | driver_locations | longitude | double precision | NO |             |
+| | driver_locations | heading | numeric | YES |                       |
+| | driver_locations | updated_at | timestamp with time zone | YES |   |
+| | driver_payouts | id | uuid | NO |                                  |
+| | driver_payouts | driver_id | uuid | YES |                          |
+| | driver_payouts | amount | numeric | NO |                           |
+| | driver_payouts | payout_status | text | NO |                       |
+| | driver_payouts | stripe_transfer_id | text | YES |                 |
+| | driver_payouts | created_at | timestamp with time zone | YES |     |
+| | driver_sessions | id | uuid | NO |                                 |
+| | driver_sessions | driver_id | uuid | YES |                         |
+| | driver_sessions | duty_status | text | NO |                        |
+| | driver_sessions | started_at | timestamp with time zone | YES |    |
+| | driver_sessions | ended_at | timestamp with time zone | YES |      |
+| | drivers | id | uuid | NO |                                         |
+| | drivers | first_name | text | NO |                                 |
+| | drivers | last_name | text | NO |                                  |
+| | drivers | phone | text | YES |                                     |
+| | drivers | rating | numeric | YES |                                 |
+| | drivers | is_active | boolean | YES |                              |
+| | drivers | created_at | timestamp with time zone | YES |            |
+| | drivers | status | text | YES |                                    |
+| | drivers | email | text | YES |                                     |
+| | payment_methods | id | uuid | NO |                                 |
+| | payment_methods | user_id | uuid | NO |                            |
+| | payment_methods | type | text | NO |                               |
+| | payment_methods | label | text | NO |                              |
+| | payment_methods | last_four | text | YES |                         |
+| | payment_methods | is_default | boolean | YES |                     |
+| | payment_methods | created_at | timestamp with time zone | NO |     |
+| | pricing_settings | id | uuid | NO |                                |
+| | pricing_settings | key | text | NO |                               |
+| | pricing_settings | value | numeric | NO |                          |
+| | pricing_settings | description | text | YES |                      |
+| | pricing_settings | updated_at | timestamp with time zone | YES |   |
+| | profiles | id | uuid | NO |                                        |
+| | profiles | full_name | text | NO |                                 |
+| | profiles | phone | text | YES |                                    |
+| | profiles | avatar_url | text | YES |                               |
+| | profiles | created_at | timestamp with time zone | NO |            |
+| | profiles | updated_at | timestamp with time zone | NO |            |
+| | ride_notifications | id | uuid | NO |                              |
+| | ride_notifications | ride_id | uuid | NO |                         |
+| | ride_notifications | user_id | uuid | NO |                         |
+| | ride_notifications | title | text | NO |                           |
+| | ride_notifications | message | text | NO |                         |
+| | ride_notifications | is_read | boolean | NO |                      |
+| | ride_notifications | created_at | timestamp with time zone | YES | |
+| | rides | id | uuid | NO |                                           |
+| | rides | user_id | uuid | NO |                                      |
+| | rides | booking_id | text | NO |                                   |
+| | rides | status | text | NO |                                       |
+| | rides | ride_type | text | NO |                                    |
+| | rides | pickup_address | text | NO |                               |
+| | rides | pickup_lat | double precision | YES |                      |
+| | rides | pickup_lng | double precision | YES |                      |
+| | rides | dropoff_address | text | NO |                              |
+| | rides | dropoff_lat | double precision | YES |                     |
+| | rides | dropoff_lng | double precision | YES |                     |
+| | rides | pickup_date | text | NO |                                  |
+| | rides | pickup_time | text | NO |                                  |
+| | rides | passengers | integer | NO |                                |
+| | rides | luggage | integer | NO |                                   |
+| | rides | flight_number | text | YES |                               |
+| | rides | special_instructions | text | YES |                        |
+| | rides | estimated_fare | text | YES |                              |
+| | rides | driver_id | uuid | YES |                                   |
+| | rides | vehicle_id | uuid | YES |                                  |
+| | rides | created_at | timestamp with time zone | YES |              |
+| | rides | updated_at | timestamp with time zone | YES |              |
+| | rides | terminal | text | YES |                                    |
+| | rides | estimated_duration | text | YES |                          |
+| | rides | estimated_distance | text | YES |                          |
+| | rides | customer_name | text | YES |                               |
+| | rides | stripe_charge_id | text | YES |                            |
+| | rides | actual_fare | numeric | YES |                              |
+| | saved_places | id | uuid | NO |                                    |
+| | saved_places | user_id | uuid | NO |                               |
+| | saved_places | label | text | NO |                                 |
+| | saved_places | address | text | NO |                               |
+| | saved_places | type | text | NO |                                  |
+| | saved_places | created_at | timestamp with time zone | NO |        |
+| | saved_places | latitude | double precision | YES |                 |
+| | saved_places | longitude | double precision | YES |                |
+| | user_preferences | user_id | uuid | NO |                           |
+| | user_preferences | default_passengers | integer | YES |            |
+| | user_preferences | default_luggage | integer | YES |               |
+| | user_preferences | notifications | text | YES |                    |
+| | user_preferences | language | text | YES |                         |
+| | user_preferences | updated_at | timestamp with time zone | NO |    |

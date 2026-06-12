@@ -1,0 +1,101 @@
+Update the existing customer app with the following UI and branding fixes.
+
+## 1. Rename the app everywhere
+
+Change the app name from **“Vantage”** to **“Atlanta Ride Share”** across the entire app.
+
+Replace it in all places including:
+
+* splash / welcome screen
+* login screen
+* signup screen
+* home screen
+* top headers
+* logo text
+* page titles
+* browser title if applicable
+* navigation labels if applicable
+* any placeholder marketing text
+* any hardcoded strings
+* any app metadata or mock branding text
+
+The app should consistently use the name **Atlanta Ride Share** everywhere, with no remaining references to “Vantage”.
+
+## 2. Fix the Home screen active ride card layout bug
+
+On the **Home page**, under the **Active Ride** section, there is a layout issue:
+
+* the **time shown near the driver name is overflowing outside the container**
+* the content is not staying inside the card boundaries
+* this makes the card look broken and unpolished
+
+Fix this so the active ride card is fully responsive and visually clean.
+
+## 3. Active Ride card design fix requirements
+
+Refactor the Active Ride card so that:
+
+* all text stays fully inside the card/container
+* no text overflows horizontally
+* no element is clipped
+* spacing is balanced and intentional
+* the layout works well on small mobile widths
+* driver name and time align properly without breaking the card
+* long names or longer time strings should still display gracefully
+
+## 4. Specific layout behavior for the driver row
+
+In the Active Ride card, there is a row where the **driver name** appears and the **time** appears near it.
+
+Rebuild this row so it behaves properly.
+
+Recommended behavior:
+
+* place driver name on the left
+* place time on the right
+* both items should stay within the width of the card
+* use flex layout correctly
+* add proper gap, alignment, and min/max width behavior
+* if needed, let the driver name truncate elegantly with ellipsis
+* the time should remain readable and never overflow outside the container
+* vertical alignment should be visually centered
+
+Use robust responsive layout rules so the row does not break on narrower screens.
+
+## 5. Responsive UI requirements
+
+Make sure the Active Ride card:
+
+* looks polished on mobile
+* handles narrow screen widths correctly
+* has proper padding on all sides
+* has consistent card height and spacing
+* uses text wrapping/truncation intentionally
+* avoids crowding between driver name, time, and status elements
+
+If there are other nearby elements inside the Active Ride card contributing to the overflow, clean those up too.
+
+## 6. Visual polish
+
+While fixing the bug, improve the card slightly so it feels premium and clean:
+
+* balanced internal padding
+* proper spacing between sections
+* clean typographic hierarchy
+* neat icon alignment if icons are used
+* no cramped layout
+* no uneven margins
+
+Do not redesign the whole app. Just make the Active Ride card feel production-ready and fix the broken row cleanly.
+
+## 7. Quality check
+
+After making the changes, ensure:
+
+* “Atlanta Ride Share” is the brand shown throughout the app
+* there are no remaining “Vantage” references
+* the Home page Active Ride card has no overflow issues
+* the time near the driver name stays fully inside the container on mobile and standard app widths
+* the UI looks polished and intentional
+
+Only make the branding replacement and the layout/card fixes described above.
