@@ -15,6 +15,8 @@ import { NativeMapView } from "@/components/MapView";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useRides } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 function AnimatedPulse({ color }: { color: string }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -87,23 +89,111 @@ export default function LiveTrackingScreen() {
   );
 
   const [eta] = useState("18 min");
+  const { user } = useAuth();
+  const customerWatchRef = useRef<any>(null);
 
+  // 1. Live Driver Location Subscription
   useEffect(() => {
-    if (!ride?.driver) return;
-    let step = 0;
-    const waypoints = [
-      { latitude: 33.6441, longitude: -84.4324 },
-      { latitude: 33.6600, longitude: -84.4200 },
-      { latitude: 33.6800, longitude: -84.4100 },
-      { latitude: 33.7000, longitude: -84.4000 },
-      { latitude: 33.7200, longitude: -84.3950 },
-    ];
-    const interval = setInterval(() => {
-      step = (step + 1) % waypoints.length;
-      setDriverCoords(waypoints[step]);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [ride?.driver]);
+    if (!rideId) return;
+
+    // Fetch initial driver location
+    const fetchDriverLocation = async () => {
+      const { data, error } = await supabase
+        .from("driver_locations")
+        .select("latitude, longitude")
+        .eq("ride_id", rideId)
+        .maybeSingle();
+
+      if (data) {
+        setDriverCoords({
+          latitude: data.latitude,
+          longitude: data.longitude,
+        });
+      }
+    };
+    fetchDriverLocation();
+
+    // Subscribe to updates on driver_locations for this ride
+    const channel = supabase
+      .channel(`driver-location-${rideId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "driver_locations",
+          filter: `ride_id=eq.${rideId}`,
+        },
+        (payload) => {
+          if (payload.new && (payload.new as any).latitude && (payload.new as any).longitude) {
+            setDriverCoords({
+              latitude: (payload.new as any).latitude,
+              longitude: (payload.new as any).longitude,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rideId]);
+
+  // 2. Track Customer Location for Admin
+  useEffect(() => {
+    if (!user?.id || !rideId || Platform.OS === "web") return;
+
+    // Only track if the ride is in an active state
+    const activeStatuses = ["driver_en_route", "arrived", "ongoing", "ride_started", "confirmed", "accepted"];
+    if (!activeStatuses.includes(ride?.status ?? "")) {
+      return;
+    }
+
+    const startCustomerTracking = async () => {
+      try {
+        const { status } = await import("expo-location").then((m) =>
+          m.requestForegroundPermissionsAsync()
+        );
+        if (status !== "granted") {
+          console.warn("[live-tracking] Location permission denied");
+          return;
+        }
+
+        const { watchPositionAsync, Accuracy } = await import("expo-location");
+        customerWatchRef.current = await watchPositionAsync(
+          {
+            accuracy: Accuracy.High,
+            timeInterval: 5000,
+            distanceInterval: 10,
+          },
+          (loc) => {
+            console.log("[live-tracking] Sending customer location to database");
+            supabase.from("customer_locations").upsert(
+              {
+                user_id: user.id,
+                ride_id: rideId,
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id,ride_id" }
+            );
+          }
+        );
+      } catch (err) {
+        console.warn("[live-tracking] Error in customer tracking:", err);
+      }
+    };
+
+    startCustomerTracking();
+
+    return () => {
+      if (customerWatchRef.current) {
+        customerWatchRef.current.remove();
+      }
+    };
+  }, [user?.id, rideId, ride?.status]);
 
   if (!ride) {
     return (

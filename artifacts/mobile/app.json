@@ -14,9 +14,15 @@
       "backgroundColor": "#1A2332"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.atlanta.rideshare",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
-    "android": {},
+    "android": {
+      "package": "com.atlanta.rideshare"
+    },
     "web": {
       "favicon": "./assets/images/logo.png"
     },

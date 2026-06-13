@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const effectiveRole =
         roleRow?.role ?? data.user?.user_metadata?.user_role ?? "customer";
 
-      if (effectiveRole !== "customer") {
+      if (effectiveRole !== "customer" && effectiveRole !== "admin") {
         await supabase.auth.signOut();
         throw new Error("Unauthorized access. Use the correct application.");
       }
