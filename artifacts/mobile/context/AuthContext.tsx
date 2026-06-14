@@ -86,6 +86,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchProfile(sbUser: SupabaseUser) {
     try {
+      // Role gate check: only 'customer' accounts may use this app.
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("id", sbUser.id)
+        .maybeSingle();
+
+      const effectiveRole = roleRow?.role ?? sbUser.user_metadata?.user_role ?? "customer";
+      if (effectiveRole !== "customer") {
+        await supabase.auth.signOut();
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
       // Use maybeSingle so a missing row returns null instead of throwing.
       let { data: profile } = await supabase
         .from("profiles")
@@ -137,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const effectiveRole =
         roleRow?.role ?? data.user?.user_metadata?.user_role ?? "customer";
 
-      if (effectiveRole !== "customer" && effectiveRole !== "admin") {
+      if (effectiveRole !== "customer") {
         await supabase.auth.signOut();
         throw new Error("Unauthorized access. Use the correct application.");
       }
@@ -156,6 +171,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: { data: { full_name: fullName, phone, user_role: "customer" } },
     });
     if (error) throw new Error(error.message);
+
+    if (data.session?.user) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("id", data.session.user.id)
+        .maybeSingle();
+
+      const effectiveRole =
+        roleRow?.role ?? data.session.user.user_metadata?.user_role ?? "customer";
+
+      if (effectiveRole !== "customer") {
+        await supabase.auth.signOut();
+        throw new Error(`This email is already registered as a ${effectiveRole}. You cannot sign up as a customer.`);
+      }
+    }
+
     return { needsEmailConfirmation: !data.session };
   }
 

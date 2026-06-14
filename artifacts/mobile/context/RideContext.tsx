@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 export type RideStatus =
   | "booking_requested"
   | "pending_assignment"
+  | "confirmed"
   | "fully_assigned"
   | "driver_en_route"
   | "driver_arrived"
@@ -84,6 +85,7 @@ export interface Ride {
   createdAt: string;
   updatedAt: string;
   notifications: RideNotification[];
+  shareLocation?: boolean;
 }
 
 export interface CreateRideInput {
@@ -122,6 +124,13 @@ interface RideContextType {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function mapRow(row: any): Ride {
+  let mappedStatus = row.status;
+  if (mappedStatus === "arrived") {
+    mappedStatus = "driver_arrived";
+  } else if (mappedStatus === "ongoing") {
+    mappedStatus = "ride_started";
+  }
+
   const driver = row.driver
     ? {
         id: row.driver.id,
@@ -160,7 +169,7 @@ function mapRow(row: any): Ride {
   return {
     id: row.id,
     bookingId: row.booking_id,
-    status: row.status as RideStatus,
+    status: mappedStatus as RideStatus,
     rideType: row.ride_type as RideType,
     pickupAddress: row.pickup_address,
     pickupLat: row.pickup_lat ?? undefined,
@@ -178,6 +187,7 @@ function mapRow(row: any): Ride {
     driver,
     vehicle,
     driverLocation: undefined,
+    shareLocation: row.share_location ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     notifications,
@@ -205,12 +215,14 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
   // ── Load ────────────────────────────────────────────────────────────────────
   const loadRides = useCallback(async () => {
     if (!userId) {
+      console.log("[RideContext] loadRides: no userId, skipping");
       setRides([]);
       return;
     }
     setIsLoading(true);
+    console.log("[RideContext] loadRides: fetching for userId =", userId);
     try {
-      const { data, error } = await supabase
+      const { data, error, status, statusText } = await supabase
         .from("rides")
         .select(
           `*, driver:drivers(*), vehicle:vehicles(*), notifications:ride_notifications(*)`
@@ -218,10 +230,19 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      console.log("[RideContext] loadRides response: status=", status, statusText,
+        "rowCount=", data?.length ?? 0, "error=", error?.message ?? null,
+        "errorCode=", error?.code ?? null, "errorDetails=", error?.details ?? null);
+
+      if (error) {
+        console.error("[RideContext] loadRides Supabase error:", JSON.stringify(error));
+        throw error;
+      }
+      console.log("[RideContext] loadRides: got", data?.length ?? 0, "rides");
+      console.log("[RideContext] ride statuses:", (data ?? []).map(r => `${r.booking_id}:${r.status}`).join(", "));
       setRides((data ?? []).map(mapRow));
     } catch (err) {
-      console.warn("RideContext: loadRides error", err);
+      console.warn("[RideContext] loadRides error", err);
     } finally {
       setIsLoading(false);
     }
@@ -360,14 +381,18 @@ export function RideProvider({ children }: { children: React.ReactNode }) {
 
   // ── Selectors ────────────────────────────────────────────────────────────────
   function getActiveRide(): Ride | undefined {
-    return rides.find((r) =>
-      ["driver_en_route", "driver_arrived", "ride_started", "fully_assigned"].includes(r.status)
+    // Prioritise rides that are actively in-progress
+    return (
+      rides.find((r) => ["driver_en_route", "driver_arrived", "ride_started"].includes(r.status)) ||
+      // Fall back to confirmed/fully_assigned (driver assigned but not yet moving)
+      rides.find((r) => ["confirmed", "fully_assigned"].includes(r.status))
     );
   }
 
   function getUpcomingRides(): Ride[] {
+    // Includes all statuses that represent a booked-but-not-yet-active ride
     return rides.filter((r) =>
-      ["booking_requested", "pending_assignment", "fully_assigned"].includes(r.status)
+      ["booking_requested", "pending_assignment", "confirmed", "fully_assigned"].includes(r.status)
     );
   }
 

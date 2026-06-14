@@ -4,19 +4,20 @@ import { StyleSheet, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
 import { useColors } from "@/hooks/useColors";
 
-const PICKUP_COORDS = { latitude: 33.6407, longitude: -84.4277 };
-const DROPOFF_COORDS = { latitude: 33.7929, longitude: -84.3871 };
-
 export function NativeMapView({
   driverCoords,
+  pickupCoords,
+  dropoffCoords,
 }: {
   driverCoords: { latitude: number; longitude: number };
+  pickupCoords: { latitude: number; longitude: number };
+  dropoffCoords: { latitude: number; longitude: number };
 }) {
   const colors = useColors();
 
   const mapRegion = {
-    latitude: (driverCoords.latitude + DROPOFF_COORDS.latitude) / 2,
-    longitude: (driverCoords.longitude + DROPOFF_COORDS.longitude) / 2,
+    latitude: (driverCoords.latitude + dropoffCoords.latitude) / 2,
+    longitude: (driverCoords.longitude + dropoffCoords.longitude) / 2,
     latitudeDelta: 0.22,
     longitudeDelta: 0.22,
   };
@@ -36,12 +37,12 @@ export function NativeMapView({
           <Feather name="navigation" size={16} color={colors.gold} />
         </View>
       </Marker>
-      <Marker coordinate={PICKUP_COORDS} title="Pickup">
+      <Marker coordinate={pickupCoords} title="Pickup">
         <View style={[styles.pickupMarker, { backgroundColor: colors.gold }]}>
           <MaterialIcons name="flight-land" size={14} color="#fff" />
         </View>
       </Marker>
-      <Marker coordinate={DROPOFF_COORDS} title="Drop-off">
+      <Marker coordinate={dropoffCoords} title="Drop-off">
         <View
           style={[
             styles.dropoffMarker,
@@ -52,7 +53,7 @@ export function NativeMapView({
         </View>
       </Marker>
       <Polyline
-        coordinates={[driverCoords, PICKUP_COORDS, DROPOFF_COORDS]}
+        coordinates={[driverCoords, pickupCoords, dropoffCoords]}
         strokeColor={colors.gold}
         strokeWidth={2.5}
         lineDashPattern={[8, 4]}

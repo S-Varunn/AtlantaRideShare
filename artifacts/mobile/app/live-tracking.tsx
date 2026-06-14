@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import { requestForegroundPermissionsAsync, watchPositionAsync, Accuracy } from "expo-location";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -17,6 +18,7 @@ import { useRides } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { openInMaps } from "@/lib/maps";
 
 function AnimatedPulse({ color }: { color: string }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -142,57 +144,78 @@ export default function LiveTrackingScreen() {
 
   // 2. Track Customer Location for Admin
   useEffect(() => {
-    if (!user?.id || !rideId || Platform.OS === "web") return;
+    if (!user?.id || !rideId) return;
 
-    // Only track if the ride is in an active state
-    const activeStatuses = ["driver_en_route", "arrived", "ongoing", "ride_started", "confirmed", "accepted"];
+    // Only track if the ride is in an active state (use mapped status names from RideContext)
+    const activeStatuses = ["driver_en_route", "driver_arrived", "ride_started", "confirmed", "fully_assigned"];
     if (!activeStatuses.includes(ride?.status ?? "")) {
       return;
     }
 
-    const startCustomerTracking = async () => {
-      try {
-        const { status } = await import("expo-location").then((m) =>
-          m.requestForegroundPermissionsAsync()
-        );
-        if (status !== "granted") {
-          console.warn("[live-tracking] Location permission denied");
-          return;
-        }
+    if (Platform.OS === "web") {
+      // Simulate customer location on Web at pickup location
+      const pickupLat = ride?.pickupLat || 33.6407;
+      const pickupLng = ride?.pickupLng || -84.4277;
 
-        const { watchPositionAsync, Accuracy } = await import("expo-location");
-        customerWatchRef.current = await watchPositionAsync(
+      const updateCustomerLocation = async () => {
+        console.log("[live-tracking] Simulating customer location on Web");
+        await supabase.from("customer_locations").upsert(
           {
-            accuracy: Accuracy.High,
-            timeInterval: 5000,
-            distanceInterval: 10,
+            user_id: user.id,
+            ride_id: rideId,
+            latitude: pickupLat,
+            longitude: pickupLng,
+            updated_at: new Date().toISOString(),
           },
-          (loc) => {
-            console.log("[live-tracking] Sending customer location to database");
-            supabase.from("customer_locations").upsert(
-              {
-                user_id: user.id,
-                ride_id: rideId,
-                latitude: loc.coords.latitude,
-                longitude: loc.coords.longitude,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "user_id,ride_id" }
-            );
-          }
+          { onConflict: "user_id,ride_id" }
         );
-      } catch (err) {
-        console.warn("[live-tracking] Error in customer tracking:", err);
-      }
-    };
+      };
 
-    startCustomerTracking();
+      updateCustomerLocation(); // Run once immediately
+      const interval = setInterval(updateCustomerLocation, 10000);
+      return () => clearInterval(interval);
+    } else {
+      const startCustomerTracking = async () => {
+        try {
+          const { status } = await requestForegroundPermissionsAsync();
+          if (status !== "granted") {
+            console.warn("[live-tracking] Location permission denied");
+            return;
+          }
 
-    return () => {
-      if (customerWatchRef.current) {
-        customerWatchRef.current.remove();
-      }
-    };
+          customerWatchRef.current = await watchPositionAsync(
+            {
+              accuracy: Accuracy.High,
+              timeInterval: 5000,
+              distanceInterval: 10,
+            },
+            (loc) => {
+              console.log("[live-tracking] Sending customer location to database");
+              supabase.from("customer_locations").upsert(
+                {
+                  user_id: user.id,
+                  ride_id: rideId,
+                  latitude: loc.coords.latitude,
+                  longitude: loc.coords.longitude,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "user_id,ride_id" }
+              );
+            }
+          );
+        } catch (err) {
+          console.warn("[live-tracking] Error in customer tracking:", err);
+        }
+      };
+
+      startCustomerTracking();
+
+      return () => {
+        if (customerWatchRef.current) {
+          customerWatchRef.current.remove();
+        }
+      };
+    }
   }, [user?.id, rideId, ride?.status]);
 
   if (!ride) {
@@ -221,7 +244,17 @@ export default function LiveTrackingScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <NativeMapView driverCoords={driverCoords} />
+      <NativeMapView
+        driverCoords={driverCoords}
+        pickupCoords={{
+          latitude: ride.pickupLat ?? 33.6407,
+          longitude: ride.pickupLng ?? -84.4277,
+        }}
+        dropoffCoords={{
+          latitude: ride.dropoffLat ?? 33.7929,
+          longitude: ride.dropoffLng ?? -84.3871,
+        }}
+      />
 
       {/* Header overlay */}
       <View style={[styles.header, { paddingTop: topPad + 8 }]}>
@@ -284,6 +317,14 @@ export default function LiveTrackingScreen() {
                 </Text>
               )}
             </View>
+            {driverCoords && (
+              <TouchableOpacity
+                onPress={() => openInMaps(driverCoords.latitude, driverCoords.longitude, `${ride.driver?.firstName}'s Location`)}
+                style={styles.mapIconBtn}
+              >
+                <Feather name="navigation" size={18} color={colors.gold} />
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -296,6 +337,14 @@ export default function LiveTrackingScreen() {
             >
               {ride.pickupAddress}
             </Text>
+            {ride.pickupLat != null && ride.pickupLng != null && (
+              <TouchableOpacity
+                onPress={() => openInMaps(ride.pickupLat!, ride.pickupLng!, ride.pickupAddress)}
+                style={styles.mapIconBtn}
+              >
+                <Feather name="navigation" size={16} color={colors.gold} />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={[styles.destLine, { borderColor: colors.border }]} />
           <View style={styles.destRow}>
@@ -315,13 +364,21 @@ export default function LiveTrackingScreen() {
             >
               {ride.dropoffAddress}
             </Text>
+            {ride.dropoffLat != null && ride.dropoffLng != null && (
+              <TouchableOpacity
+                onPress={() => openInMaps(ride.dropoffLat!, ride.dropoffLng!, ride.dropoffAddress)}
+                style={styles.mapIconBtn}
+              >
+                <Feather name="navigation" size={16} color={colors.gold} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         <TouchableOpacity
           style={[styles.dispatchBtn, { backgroundColor: colors.navy }]}
           onPress={() =>
-            Linking.openURL("tel:+14045550100").catch(() => {})
+            Linking.openURL("tel:+14709230235").catch(() => {})
           }
           activeOpacity={0.8}
         >
@@ -489,5 +546,9 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginBottom: 12,
+  },
+  mapIconBtn: {
+    padding: 4,
+    alignSelf: "center",
   },
 });

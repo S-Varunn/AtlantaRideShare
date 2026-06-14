@@ -14,6 +14,8 @@ export function getStatusLabel(status: RideStatus): string {
       return "Booking Requested";
     case "pending_assignment":
       return "Pending Assignment";
+    case "confirmed":
+      return "Driver Confirmed";
     case "fully_assigned":
       return "Assigned";
     case "driver_en_route":
@@ -35,6 +37,8 @@ export function getStatusColor(status: RideStatus, colors: ReturnType<typeof use
       return colors.statusRequested;
     case "pending_assignment":
       return colors.statusPending;
+    case "confirmed":
+      return colors.statusAssigned;
     case "fully_assigned":
       return colors.statusAssigned;
     case "driver_en_route":

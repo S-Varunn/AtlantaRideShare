@@ -39,16 +39,24 @@ export function MapboxAddressSearch({
   const selectedRef = useRef(false);
 
   const search = useCallback(async (q: string) => {
+    console.log("[MapboxAddressSearch] search called with query:", q);
     if (q.length < 3) {
+      console.log("[MapboxAddressSearch] query length < 3, clearing suggestions");
       setSuggestions([]);
       setOpen(false);
       return;
     }
     setFetching(true);
-    const results = await geocodeSuggest(q);
-    setSuggestions(results);
-    setOpen(results.length > 0);
-    setFetching(false);
+    try {
+      const results = await geocodeSuggest(q);
+      console.log("[MapboxAddressSearch] geocodeSuggest results:", results.map(r => r.text));
+      setSuggestions(results);
+      setOpen(results.length > 0);
+    } catch (err) {
+      console.error("[MapboxAddressSearch] geocodeSuggest failed:", err);
+    } finally {
+      setFetching(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -67,7 +75,6 @@ export function MapboxAddressSearch({
     selectedRef.current = true;
     setSuggestions([]);
     setOpen(false);
-    onChangeText(feature.place_name);
     onSelect({
       address: feature.place_name,
       longitude: feature.center[0],

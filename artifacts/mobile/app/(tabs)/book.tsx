@@ -1,6 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -139,6 +141,7 @@ export default function BookRideScreen() {
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [newBookingId, setNewBookingId] = useState("");
+  const [copied, setCopied] = useState(false);
   const [fareBreakdown, setFareBreakdown] = useState<FareBreakdown | null>(null);
   const [fareLoading, setFareLoading] = useState(false);
   const [fareError, setFareError] = useState<string | null>(null);
@@ -148,8 +151,12 @@ export default function BookRideScreen() {
     (params.preselect as RideType) ?? "airport_pickup"
   );
   const [pickup, setPickup] = useState((params.prefillPickup as string) ?? "");
-  const [pickupLat, setPickupLat] = useState<number | undefined>();
-  const [pickupLng, setPickupLng] = useState<number | undefined>();
+  const [pickupLat, setPickupLat] = useState<number | undefined>(
+    params.prefillPickupLat ? parseFloat(params.prefillPickupLat as string) : undefined
+  );
+  const [pickupLng, setPickupLng] = useState<number | undefined>(
+    params.prefillPickupLng ? parseFloat(params.prefillPickupLng as string) : undefined
+  );
   const [dropoff, setDropoff] = useState("");
   const [dropoffLat, setDropoffLat] = useState<number | undefined>();
   const [dropoffLng, setDropoffLng] = useState<number | undefined>();
@@ -171,10 +178,10 @@ export default function BookRideScreen() {
     if (params.preselect) setRideType(params.preselect as RideType);
     if (params.prefillPickup) {
       setPickup(params.prefillPickup as string);
-      setPickupLat(undefined);
-      setPickupLng(undefined);
+      setPickupLat(params.prefillPickupLat ? parseFloat(params.prefillPickupLat as string) : undefined);
+      setPickupLng(params.prefillPickupLng ? parseFloat(params.prefillPickupLng as string) : undefined);
     }
-  }, [params.preselect, params.prefillPickup]);
+  }, [params.preselect, params.prefillPickup, params.prefillPickupLat, params.prefillPickupLng]);
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const validateStep1 = () => {
@@ -182,8 +189,16 @@ export default function BookRideScreen() {
       Alert.alert("Missing Info", "Please enter a pickup address.");
       return false;
     }
+    if (pickupLat === undefined || pickupLng === undefined) {
+      Alert.alert("Location Required", "Please select your pickup address from the search suggestions.");
+      return false;
+    }
     if (!dropoff.trim()) {
       Alert.alert("Missing Info", "Please enter a drop-off address.");
+      return false;
+    }
+    if (dropoffLat === undefined || dropoffLng === undefined) {
+      Alert.alert("Location Required", "Please select your drop-off address from the search suggestions.");
       return false;
     }
     return true;
@@ -254,6 +269,7 @@ export default function BookRideScreen() {
     setSpecialInstructions("");
     setPassengers("1");
     setLuggage("0");
+    setCopied(false);
   };
 
   // ── Confirmation screen ────────────────────────────────────────────────────
@@ -269,7 +285,42 @@ export default function BookRideScreen() {
           <Feather name="check-circle" size={56} color={colors.gold} />
         </View>
         <Text style={[styles.confirmedTitle, { color: colors.foreground }]}>Booking Received</Text>
-        <Text style={[styles.confirmedId, { color: colors.gold }]}>{newBookingId}</Text>
+        <TouchableOpacity
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            marginVertical: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: colors.gold + "40",
+            backgroundColor: colors.gold + "10",
+          }}
+          onPress={async () => {
+            await Clipboard.setStringAsync(newBookingId);
+            try {
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {}
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          activeOpacity={0.7}
+          accessibilityLabel="Copy Booking ID"
+        >
+          <Text style={[styles.confirmedId, { color: colors.gold }]}>{newBookingId}</Text>
+          <Feather
+            name={copied ? "check" : "copy"}
+            size={14}
+            color={copied ? "#10B981" : colors.gold}
+          />
+          {copied && (
+            <Text style={{ fontSize: 12, color: "#10B981", fontFamily: "Inter_500Medium" }}>
+              Copied!
+            </Text>
+          )}
+        </TouchableOpacity>
         <Text style={[styles.confirmedMsg, { color: colors.mutedForeground }]}>
           Your ride request has been received. Our dispatch team will review your booking and assign
           your driver and vehicle shortly.{"\n\n"}You will be notified at each stage of the process.

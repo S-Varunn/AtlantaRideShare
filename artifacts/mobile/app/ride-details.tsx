@@ -1,6 +1,8 @@
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import {
   Linking,
   Modal,
@@ -16,11 +18,13 @@ import { StatusBadge, getStatusColor, getStatusLabel } from "@/components/Status
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { useRides, type Ride, type RideStatus } from "@/context/RideContext";
 import { useColors } from "@/hooks/useColors";
+import { openInMaps } from "@/lib/maps";
 
 const STATUS_STEPS: RideStatus[] = [
   "booking_requested",
   "pending_assignment",
   "fully_assigned",
+  "confirmed",
   "driver_en_route",
   "driver_arrived",
   "ride_started",
@@ -109,6 +113,7 @@ export default function RideDetailsScreen() {
   const { rides, cancelRide, markNotificationsRead } = useRides();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 24;
@@ -131,11 +136,29 @@ export default function RideDetailsScreen() {
     );
   }
 
+  // Helper to check if scheduled pickup is within 30 minutes
+  const isTimeForTracking = (() => {
+    if (!ride.pickupDate || !ride.pickupTime) return false;
+    try {
+      const combinedStr = `${ride.pickupDate} ${ride.pickupTime}`;
+      const scheduledTime = new Date(combinedStr).getTime();
+      if (isNaN(scheduledTime)) return false;
+      const now = new Date().getTime();
+      return now >= (scheduledTime - 30 * 60 * 1000);
+    } catch {
+      return false;
+    }
+  })();
+
   const canTrack =
     ride.driver &&
-    ["fully_assigned", "driver_en_route", "driver_arrived", "ride_started"].includes(ride.status);
+    (
+      ride.shareLocation ||
+      ["driver_en_route", "driver_arrived", "ride_started"].includes(ride.status) ||
+      (["fully_assigned", "confirmed", "accepted"].includes(ride.status) && isTimeForTracking)
+    );
 
-  const canCancel = ["booking_requested", "pending_assignment", "fully_assigned"].includes(
+  const canCancel = ["booking_requested", "pending_assignment", "fully_assigned", "confirmed"].includes(
     ride.status
   );
 
@@ -183,10 +206,34 @@ export default function RideDetailsScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.bookingId, { color: colors.mutedForeground }]}>
-            {ride.bookingId}
-          </Text>
-          <Text style={[styles.screenTitle, { color: colors.foreground }]}>
+          <TouchableOpacity
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}
+            onPress={async () => {
+              await Clipboard.setStringAsync(ride.bookingId);
+              try {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch {}
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            activeOpacity={0.7}
+            accessibilityLabel="Copy Booking ID"
+          >
+            <Text style={[styles.bookingId, { color: colors.mutedForeground }]}>
+              {ride.bookingId}
+            </Text>
+            <Feather
+              name={copied ? "check" : "copy"}
+              size={11}
+              color={copied ? "#10B981" : colors.mutedForeground}
+            />
+            {copied && (
+              <Text style={{ fontSize: 10, color: "#10B981", fontFamily: "Inter_500Medium" }}>
+                Copied
+              </Text>
+            )}
+          </TouchableOpacity>
+          <Text style={[styles.screenTitle, { color: colors.foreground, marginTop: 2 }]}>
             {getRideTypeLabel(ride.rideType)}
           </Text>
         </View>
@@ -223,9 +270,16 @@ export default function RideDetailsScreen() {
           <View style={[styles.routeDot, { backgroundColor: colors.gold }]} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.routeLabel, { color: colors.mutedForeground }]}>Pickup</Text>
-            <Text style={[styles.routeAddr, { color: colors.foreground }]}>
-              {ride.pickupAddress}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+              <Text style={[styles.routeAddr, { color: colors.foreground, flex: 1 }]}>
+                {ride.pickupAddress}
+              </Text>
+              {ride.pickupLat != null && ride.pickupLng != null && (
+                <TouchableOpacity onPress={() => openInMaps(ride.pickupLat!, ride.pickupLng!, ride.pickupAddress)} style={styles.mapIconBtn}>
+                  <Feather name="navigation" size={18} color={colors.gold} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
         <View style={[styles.routeConnector, { borderColor: colors.border }]} />
@@ -238,9 +292,16 @@ export default function RideDetailsScreen() {
           />
           <View style={{ flex: 1 }}>
             <Text style={[styles.routeLabel, { color: colors.mutedForeground }]}>Drop-off</Text>
-            <Text style={[styles.routeAddr, { color: colors.foreground }]}>
-              {ride.dropoffAddress}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+              <Text style={[styles.routeAddr, { color: colors.foreground, flex: 1 }]}>
+                {ride.dropoffAddress}
+              </Text>
+              {ride.dropoffLat != null && ride.dropoffLng != null && (
+                <TouchableOpacity onPress={() => openInMaps(ride.dropoffLat!, ride.dropoffLng!, ride.dropoffAddress)} style={styles.mapIconBtn}>
+                  <Feather name="navigation" size={18} color={colors.gold} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -348,7 +409,7 @@ export default function RideDetailsScreen() {
       <View style={styles.actions}>
         <TouchableOpacity
           style={[styles.dispatchBtn, { backgroundColor: colors.navy }]}
-          onPress={() => Linking.openURL("tel:+14045550100").catch(() => {})}
+          onPress={() => Linking.openURL("tel:+14709230235").catch(() => {})}
           activeOpacity={0.8}
         >
           <Feather name="phone" size={18} color={colors.gold} />
@@ -741,5 +802,9 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+  },
+  mapIconBtn: {
+    padding: 4,
+    alignSelf: "center",
   },
 });

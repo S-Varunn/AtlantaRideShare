@@ -5,6 +5,8 @@ import { useColors } from "@/hooks/useColors";
 
 export function NativeMapView(_props: {
   driverCoords: { latitude: number; longitude: number };
+  pickupCoords: { latitude: number; longitude: number };
+  dropoffCoords: { latitude: number; longitude: number };
 }) {
   const colors = useColors();
   return (

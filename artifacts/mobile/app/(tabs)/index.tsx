@@ -58,14 +58,33 @@ const PLACE_TYPE_ICONS: Record<string, string> = {
   custom:  "place",
 };
 
-function SavedPlaceChip({ label, address, icon }: { label: string; address: string; icon: string }) {
+function SavedPlaceChip({
+  label,
+  address,
+  icon,
+  latitude,
+  longitude,
+}: {
+  label: string;
+  address: string;
+  icon: string;
+  latitude?: number;
+  longitude?: number;
+}) {
   const colors = useColors();
   return (
     <TouchableOpacity
       style={[styles.placeChip, { backgroundColor: colors.card, borderColor: colors.border }]}
       activeOpacity={0.7}
       onPress={() =>
-        router.push({ pathname: "/(tabs)/book", params: { prefillPickup: address } })
+        router.push({
+          pathname: "/(tabs)/book",
+          params: {
+            prefillPickup: address,
+            prefillPickupLat: latitude?.toString(),
+            prefillPickupLng: longitude?.toString(),
+          },
+        })
       }
     >
       <MaterialIcons name={icon as any} size={16} color={colors.navy} />
@@ -86,7 +105,7 @@ export default function HomeScreen() {
 
   const activeRide = getActiveRide();
   const upcomingRides = getUpcomingRides().filter(
-    (r) => r.status === "booking_requested" || r.status === "pending_assignment"
+    (r) => r.id !== activeRide?.id
   );
   const unreadCount = getTotalUnreadNotifications();
 
@@ -235,6 +254,8 @@ export default function HomeScreen() {
                   label={place.label}
                   address={place.address}
                   icon={PLACE_TYPE_ICONS[place.type] ?? "place"}
+                  latitude={place.latitude}
+                  longitude={place.longitude}
                 />
               ))}
             </View>

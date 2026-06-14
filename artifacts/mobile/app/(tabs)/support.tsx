@@ -82,14 +82,14 @@ export default function SupportScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom + 84;
 
   const handleDispatch = () => {
-    Linking.openURL("tel:+14045550100").catch(() => {
-      Alert.alert("Contact Dispatch", "Call us at +1 (404) 555-0100 for immediate assistance.");
+    Linking.openURL("tel:+14709230235").catch(() => {
+      Alert.alert("Contact Dispatch", "Call us at +1 (470) 923-0235 for immediate assistance.");
     });
   };
 
   const handleEmail = () => {
-    Linking.openURL("mailto:dispatch@vantagerides.com").catch(() => {
-      Alert.alert("Email Support", "Reach us at dispatch@vantagerides.com");
+    Linking.openURL("mailto:dispatch@atlantarideshare.com").catch(() => {
+      Alert.alert("Email Support", "Reach us at dispatch@atlantarideshare.com");
     });
   };
 
@@ -214,10 +214,13 @@ export default function SupportScreen() {
 
       <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
-          Atlanta Ride Share
+          © 2026 Atlanta Ride Share. All rights reserved.
         </Text>
         <Text style={[styles.footerSub, { color: colors.mutedForeground }]}>
-          24/7 Dispatch: +1 (404) 555-0100
+          Serving Alpharetta, Johns Creek, Cumming, and beyond.
+        </Text>
+        <Text style={[styles.footerSub, { color: colors.mutedForeground }]}>
+          24/7 Dispatch: +1 (470) 923-0235
         </Text>
       </View>
     </ScrollView>
